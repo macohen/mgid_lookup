@@ -3,8 +3,11 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
 from selenium.common.exceptions import NoSuchElementException
 import unittest, time, re, sys
+from argparse import ArgumentParser
 
+filename = None
 class MgidChecker2(unittest.TestCase):
+	
     def setUp(self):
         self.driver = webdriver.Firefox()
         self.driver.implicitly_wait(10)
@@ -12,7 +15,7 @@ class MgidChecker2(unittest.TestCase):
         self.verificationErrors = []
         self.accept_next_alert = True
         self.mgid_list = []
-        self.read_mgids("mgids.txt")
+        self.read_mgids(filename)
         self.login()
 
     def read_mgids(self, filename):
@@ -34,6 +37,7 @@ class MgidChecker2(unittest.TestCase):
         driver.find_element_by_id("password").send_keys(self.password)
         driver.find_element_by_css_selector("button.ghBtn").click()
         driver.find_element_by_xpath("//ul[@id='tabs']/li[5]/a/span").click()
+        lookup_results = []
         for mgid in self.mgid_list:
             driver.find_element_by_id("query").click()
             driver.find_element_by_id("query").clear()
@@ -41,10 +45,14 @@ class MgidChecker2(unittest.TestCase):
             driver.find_element_by_id("topnav_search_submit").click()
             elements = driver.find_elements_by_xpath("//tr[starts-with(@id,'asset_')]")
             if elements == None or len(elements) == 0:
-                print mgid + " not found in MRM"
+                lookup_results.append(mgid + "\tnot found")
             else:
                 for elem in elements:
-                    print mgid +"=" + elem.text
+                    lookup_results.append(mgid + "\t" + elem.text)
+	tsv = open('mgid_lookup_results.tsv','wb')
+	for res in lookup_results:
+		tsv.write(res + '\n')
+	tsv.close()
     def is_element_present(self, how, what):
         try: self.driver.find_element(by=how, value=what)
         except NoSuchElementException, e: return False
@@ -71,4 +79,10 @@ class MgidChecker2(unittest.TestCase):
         self.assertEqual([], self.verificationErrors)
 
 if __name__ == "__main__":
+    parser = ArgumentParser()
+    parser.add_argument("-f", "--file", dest="filename", help="the file containing the mgids to look up",required=True)
+    #parser.add_option("-l", "--login", dest="mrm_user", help="your MRM user name")
+    args = parser.parse_args()
+    filename = args.filename 
+    del sys.argv[1:]
     unittest.main()
